@@ -7,9 +7,6 @@ execute:
 ---
 ####### The link to my repository: https://github.com/ellenwu-git/homework3 
 
-
-
-
 ```{python}
 #| echo: false
 
@@ -73,13 +70,7 @@ plt.show()
 
 ```
 
-  
-
-
-
-
-
-
+\newpage
 
 ####### 2. Plot on a single graph the average tax (in 2012 dollars) on cigarettes and the average price of a pack of cigarettes from 1970 to 2018.
 
@@ -115,9 +106,7 @@ plt.grid(True, linestyle='--', alpha=0.7)
 plt.show()
 ```
 
-
-
-
+\newpage 
 
 ####### 3. Identify the 5 states with the highest increases in cigarette prices (in dollars) over the time period. Plot the average number of packs sold per capita for those states from 1970 to 2018.
 
@@ -141,21 +130,18 @@ for state in top5_states:
     state_data = packs_per_capita[packs_per_capita['state'] == state]
     plt.plot(state_data['Year'], state_data['sales_per_capita'], label=state)
 
-plt.figure(figsize=(8, 4))
-
 plt.title('Average Packs Sold Per Capita (Top 5 States with Highest Price Increases)')
 plt.xlabel('Year')
 plt.ylabel('Packs Sold Per Capita')
 plt.legend()
 plt.grid(True, linestyle='--', alpha=0.7)
+plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
 
 plt.show()
 
 ```
 
-
-
-
+\newpage
 
 ####### 4. Identify the 5 states with the lowest increases in cigarette prices over the time period. Plot the average number of packs sold per capita for those states from 1970 to 2018.
 
@@ -174,8 +160,6 @@ bottom5_df = df[df['state'].isin(bottom5_states)]
 # Group by year and state to calculate average packs sold per capita
 packs_per_capita = bottom5_df.groupby(['Year', 'state'])['sales_per_capita'].mean().reset_index()
 
-plt.figure(figsize=(8, 4))
-
 for state in bottom5_states:
     state_data = packs_per_capita[packs_per_capita['state'] == state]
     plt.plot(state_data['Year'], state_data['sales_per_capita'], label=state)
@@ -190,8 +174,7 @@ plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
 plt.show()
 ```
 
-
-
+\newpage
 
 ####### 5. Compare the trends in sales from the 5 states with the highest price increases to those with the lowest price increases.
 
@@ -216,6 +199,7 @@ plt.show()
 ```
 Based on the graph, states with the highest price increases experienced a steeper decline in average cigarette packs sold per capita over time compared to states with the lowest price increases. The states with the lowest price increases initially had higher per capita sales and, while they also saw a decline, the decline was more gradual. This suggests that higher cigarette prices are associated with sharper reductions in cigarette consumption, supporting the idea that cigarette demand is responsive to price increases.
 
+\newpage
 
 ####### 6. Focusing only on the time period from 1970 to 1990, regress log sales on log prices to estimate the price elasticity of demand over that period. Interpret your results.
 
@@ -247,10 +231,9 @@ print(f"Estimated Price Elasticity of Demand: {elasticity:.2f}")
 ```
 The estimated price elasticity of demand for cigarettes from 1970 to 1990 is approximately -0.09. This means that a 1% increase in the price of cigarettes is associated with only a 0.09% decrease in cigarette sales per capita. The elasticity is small in magnitude, indicating that cigarette demand was relatively inelastic during this period — meaning consumers were not highly responsive to price changes. The coefficient is statistically significant (p-value < 0.001), so there is strong evidence that price is related to cigarette sales, though the effect is quite small.
 
-
+\newpage
 
 ####### 7. Again limiting to 1970 to 1990, regress log sales on log prices using the total (federal and state) cigarette tax (in dollars) as an instrument for log prices. Interpret your results and compare your estimates to those without an instrument. Are they different? If so, why?
-
 
 ```{python}
 #| echo: false
@@ -280,6 +263,9 @@ print(model_iv.summary)
 elasticity_iv = model_iv.params['log_price_per_pack']
 print(f"\nInstrumented Price Elasticity of Demand: {elasticity_iv:.2f}")
 ```
+Using cigarette taxes as an instrument for prices, the estimated price elasticity of demand for cigarettes between 1970 and 1990 is approximately -0.26. This suggests that a 10% increase in cigarette prices is associated with a 2.6% decrease in cigarette sales per capita, indicating that demand for cigarettes is relatively inelastic. This IV estimate of -0.26 is more elastic than the OLS estimate of -0.093. This suggests that the OLS regression likely underestimated the true price elasticity, possibly due to endogeneity bias — factors like state-level health campaigns or smoking culture may simultaneously influence both cigarette prices and consumption. By using taxes as an instrument, the IV estimate isolates the effect of exogenous price changes caused by policy, giving a clearer picture of how consumers respond to price changes.
+
+\newpage
 
 ####### 8. Show the first stage and reduced-form results from the instrument.
 ```{python}
@@ -308,6 +294,8 @@ reduced_form_model = sm.OLS(y_reduced_form, X_reduced_form).fit()
 print("\nReduced Form Regression Results:")
 print(reduced_form_model.summary())
 ```
+
+\newpage
 
 ####### 9. Repeat questions 1-3 focusing on the period from 1991 to 2015.
 ```{python}
@@ -404,6 +392,8 @@ plt.grid(True, linestyle='--', alpha=0.7)
 plt.show()
 ```
 
+\newpage
+
 ####### 10. Compare your elasticity estimates from 1970-1990 versus those from 1991-2015. Are they different? If so, why?
 ```{python}
 #| echo: false
@@ -430,4 +420,6 @@ print(model.summary())
 elasticity = model.params['log_price_per_pack']
 print(f"Estimated Price Elasticity of Demand: {elasticity:.2f}")
 ```
+The estimated price elasticity of demand for cigarettes was -0.09 for the 1970-1990 period and -0.67 for the 1991-2015 period. This indicates that cigarette demand became significantly more elastic over time, meaning that consumers became much more responsive to price changes in the later period. The increase in price elasticity from -0.09 to -0.67 suggests that cigarettes became much more price-sensitive in the later years, likely due to a combination of higher taxes, public health campaigns, and the availability of alternatives. This implies that tax increases may now be a much more effective tool in reducing smoking rates than they were in earlier decades.
+
 
