@@ -30,7 +30,7 @@ import warnings
 warnings.simplefilter('ignore')
 
 # Load data
-df = pd.read_csv("/Users/ellenwu/homework3/data/output/ftaxburden_data.csv")
+df = pd.read_csv("/Users/ellenwu/homework3/data/output/Taxburden_data.csv")
 df['tax_change'] = df.groupby('state')['tax_state'].diff().notna()
 ```
 
