@@ -60,7 +60,7 @@ plt.show()
 ```{python}
 #| echo: false
 
-df = pd.read_csv("/Users/ellenwu/homework3/data/output/ftaxburden_data.csv")
+df = pd.read_csv("/Users/ellenwu/homework3/data/output/Taxburden_data.csv")
  
 # Filter for years 1970 to 2018
 df = df[(df['Year'] >= 1970) & (df['Year'] <= 2018)]
@@ -133,34 +133,41 @@ plt.show()
 ```{python}
 #| echo: false
 
-price_change = df.groupby('state')['cost_per_pack'].agg(['first', 'last']).reset_index()
+df = pd.read_csv("/Users/ellenwu/homework3/data/output/Taxburden_data.csv")
 
-# Calculate the total increase in price
+# Filter for years 1970-2018
+df = df[(df['Year'] >= 1970) & (df['Year'] <= 2018)]
+
+# Compute the price difference between 1970 and 2018
+price_change = df.groupby('state')['price_cpi'].agg(['first', 'last'])
 price_change['price_increase'] = price_change['last'] - price_change['first']
 
-bottom5_states = price_change.sort_values('price_increase', ascending=True).head(5)['state']
+# Identify the 5 states with the lowest price increase
+bottom_5_states = price_change.nsmallest(5, 'price_increase').index.tolist()
 
-print("5 states with the lowest cigarette price increases:")
-print(bottom5_states.tolist())
+# Filter the dataset for these states only
+df = df[df['state'].isin(bottom_5_states)]
 
-bottom5_df = df[df['state'].isin(bottom5_states)]
+# Compute the average packs sold per capita for these states each year
+avg_sales_per_year = df.groupby(['Year', 'state'])['sales_per_capita'].mean().unstack
 
-# Group by year and state to calculate average packs sold per capita
-packs_per_capita = bottom5_df.groupby(['Year', 'state'])['sales_per_capita'].mean().reset_index()
+# Regenerate the correct DataFrame
+avg_sales_per_year = df.groupby(['Year', 'state'])['sales_per_capita'].mean().unstack()
 
-plt.figure(figsize=(12, 6))
+plt.figure(figsize=(10, 6))
 
-for state in bottom5_states:
-    state_data = packs_per_capita[packs_per_capita['state'] == state]
-    plt.plot(state_data['Year'], state_data['sales_per_capita'], label=state)
+for state in bottom_5_states:
+    if state in avg_sales_per_year.columns:
+        plt.plot(avg_sales_per_year.index, avg_sales_per_year[state], label=state)
+    else:
+        print(f"Warning: {state} not found in avg_sales_per_year columns")
 
-plt.title('Average Packs Sold Per Capita (5 States with Lowest Price Increases)')
+# Graph formatting
 plt.xlabel('Year')
 plt.ylabel('Packs Sold Per Capita')
-plt.legend()
-plt.grid(True, linestyle='--', alpha=0.7)
-plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
-
+plt.title('Average Cigarette Packs Sold Per Capita (Bottom 5 States with Lowest Price Increase, 1970–2018)')
+plt.legend(title="State")
+plt.grid(True, linestyle="--", alpha=0.7)
 plt.show()
 
 ```
@@ -172,21 +179,43 @@ plt.show()
 ```{python}
 #| echo: false
 
+df = pd.read_csv("/Users/ellenwu/homework3/data/output/Taxburden_data.csv")
+
+# Filter for years 1970-2018
+df = df[(df['Year'] >= 1970) & (df['Year'] <= 2018)]
+
+# Compute the first and last cigarette price for each state
+price_change = df.groupby("state")["price_cpi"].agg(["first", "last"])
+price_change["price_increase"] = price_change["last"] - price_change["first"]
+
+# Identify the 5 states with the highest price increase
+top_5_states = price_change.nlargest(5, "price_increase").index.tolist()
+
+# Identify the 5 states with the lowest price increase
+bottom_5_states = price_change.nsmallest(5, "price_increase").index.tolist()
+
+# Filter the dataset for these states only
+df_top = df[df["state"].isin(top_5_states)]
+df_bottom = df[df["state"].isin(bottom_5_states)]
+
+# Compute the average packs sold per capita for each group
+avg_sales_top = df_top.groupby('Year')['sales_per_capita'].mean()
+avg_sales_bottom = df_bottom.groupby('Year')['sales_per_capita'].mean()
+
 # Group by year and calculate mean sales_per_capita for each group (top 5 and bottom 5)
 
-top5_avg = top5_df.groupby('Year')['sales_per_capita'].mean().reset_index()
-bottom5_avg = bottom5_df.groupby('Year')['sales_per_capita'].mean().reset_index()
+# Plot the trends for both groups
+plt.figure(figsize=(10, 6))
+plt.plot(avg_sales_top.index, avg_sales_top, label='Top 5 States (Highest Price Increase)', color='pink', linewidth=2)
+plt.plot(avg_sales_bottom.index, avg_sales_bottom, label='Top 5 States (Lowest Price Increase)', color='purple', linewidth=2)
 
-plt.figure(figsize=(12,6))
-plt.plot(top5_avg['Year'], top5_avg['sales_per_capita'], label='Top 5 Highest Price Increase States', color='red')
-plt.plot(bottom5_avg['Year'], bottom5_avg['sales_per_capita'], label='Top 5 Lowest Price Increase States', color='blue')
-
-plt.title('Average Packs Sold Per Capita (Comparison: Highest vs Lowest Price Increase States)')
+# Format Graph
 plt.xlabel('Year')
-plt.ylabel('Average Packs Sold Per Capita')
+plt.ylabel('Packs Sold Per Capita')
 plt.legend()
-plt.grid(True, linestyle='--', alpha=0.7)
+plt.title('Comparison of Cigarette Sales: Highest vs Lowest Price Increases (1970-2018)')
 plt.show()
+
 ```
 Based on the graph, states with the highest price increases experienced a steeper decline in average cigarette packs sold per capita over time compared to states with the lowest price increases. The states with the lowest price increases initially had higher per capita sales and, while they also saw a decline, the decline was more gradual. This suggests that higher cigarette prices are associated with sharper reductions in cigarette consumption, supporting the idea that cigarette demand is responsive to price increases.
 
@@ -197,30 +226,28 @@ Based on the graph, states with the highest price increases experienced a steepe
 ```{python}
 #| echo: false
 
-# Filter for 1970-1990
+df = pd.read_csv("/Users/ellenwu/homework3/data/output/Taxburden_data.csv")
+
+# Filter for years 1970-1990
 df = df[(df['Year'] >= 1970) & (df['Year'] <= 1990)]
 
-# Drop rows with missing values in price or sales
-df = df.dropna(subset=['cost_per_pack', 'sales_per_capita'])
+# Take the natural log of sales_per_capita and price_cpi
+df['log_sales'] = np.log(df['sales_per_capita'])
+df['log_price'] = np.log(df['price_cpi'])
 
-# Take logs
-df['log_sales_per_capita'] = np.log(df['sales_per_capita'])
-df['log_price_per_pack'] = np.log(df['cost_per_pack'])
+# Drop any rows with missing values
+df = df.dropna(subset=['log_sales', 'log_price'])
 
-# Regression: log(sales_per_capita) ~ log(cost_per_pack)
-X = sm.add_constant(df['log_price_per_pack'])  # Add intercept
-y = df['log_sales_per_capita']
+# Define dependent (Y) and independent (X) variables
+X = sm.add_constant(df['log_price'])
+Y = df['log_sales']
 
-model = sm.OLS(y, X).fit()
-
-# Output results
+# Run and print OLS regression
+model = sm.OLS(Y, X).fit()
 print(model.summary())
 
-# Get elasticity (the slope coefficient)
-elasticity = model.params['log_price_per_pack']
-print(f"Estimated Price Elasticity of Demand: {elasticity:.2f}")
 ```
-The estimated price elasticity of demand for cigarettes from 1970 to 1990 is approximately -0.09. This means that a 1% increase in the price of cigarettes is associated with only a 0.09% decrease in cigarette sales per capita. The elasticity is small in magnitude, indicating that cigarette demand was relatively inelastic during this period — meaning consumers were not highly responsive to price changes. The coefficient is statistically significant (p-value < 0.001), so there is strong evidence that price is related to cigarette sales, though the effect is quite small.
+The coefficient on log_price is -0.8094, meaning that a 1% increase in price is associated with a 0.81% decrease in cigarette sales. This suggests that demand for cigarettes is inelastic, but somewhat responsive to price changes. The p-value for log_price is 0.000, which is highly significant, indicating strong evidence that price affects cigarette sales.
 
 \newpage
 
@@ -229,32 +256,53 @@ The estimated price elasticity of demand for cigarettes from 1970 to 1990 is app
 ```{python}
 #| echo: false
 
-# Drop rows with missing data in price, sales, or tax
-df = df.dropna(subset=['cost_per_pack', 'sales_per_capita', 'tax_dollar'])
+df = pd.read_csv("/Users/ellenwu/homework3/data/output/Taxburden_data.csv")
 
-# Create log variables
-df['log_sales_per_capita'] = np.log(df['sales_per_capita'])
-df['log_price_per_pack'] = np.log(df['cost_per_pack'])
+# Filter for years 1970-1990
+df = df[(df['Year'] >= 1970) & (df['Year'] <= 1990)]
 
-# Step 1: Define variables for 2SLS
-y = df['log_sales_per_capita']   # Dependent variable
-X = df[['log_price_per_pack']]   # Endogenous regressor (price)
-Z = df[['tax_dollar']]           # Instrument (tax in dollars)
+# Take the natural log of sales, price, and tax
+df['log_sales'] = np.log(df['sales_per_capita'])
+df['log_price'] = np.log(df['price_cpi'])
+df['log_tax'] = np.log(df['tax_dollar'])
 
-# Add constant to X (explanatory variables) for the regression
-X = sm.add_constant(X)
+# Drop any rows with  missing values
+df = df.dropna(subset=['log_sales', 'log_price', 'log_tax'])
 
-# Run 2SLS regression
-model_iv = IV2SLS(dependent=y, exog=X[['const']], endog=X['log_price_per_pack'], instruments=Z).fit()
+# First-Stage Regresson: Predict log(price) using log(tax) 
+X_first_stage = sm.add_constant(df['log_tax']) #IV
+Y_first_stage = df['log_price'] # Endogenous variable
 
-# Show results
-print(model_iv.summary)
+first_stage_model = sm.OLS(Y_first_stage, X_first_stage).fit()
+df['log_price_hat'] = first_stage_model.predict(X_first_stage)
 
-# Get IV estimate of elasticity
-elasticity_iv = model_iv.params['log_price_per_pack']
-print(f"\nInstrumented Price Elasticity of Demand: {elasticity_iv:.2f}")
+print('First-Stage Regression Results:')
+print(first_stage_model.summary())
+
+# Second-Stage Regresson: Use predicited log(price) 
+X_second_stage = sm.add_constant(df['log_price_hat']) # use predicted price
+Y_second_stage = df['log_sales'] # dependent variable
+
+second_stage_model = sm.OLS(Y_second_stage, X_second_stage).fit()
+
+print("\nSecond-Stage (IV) Regression Results:")
+print(second_stage_model.summary())
+
+# Extract estimated price elasticity
+elasticity_iv = second_stage_model.params["log_price_hat"]
+print(f"\nIV-Estimated Price Elasticity of Demand: {elasticity_iv:.3f}")
+
+# Compare IV Estimates to OLS Estimates 
+# Re-run the simple OLS regression (from Q6) for direct comparison
+X_ols = sm.add_constant(df['log_price'])
+ols_model = sm.OLS(Y_second_stage, X_ols).fit()
+elasticity_ols = ols_model.params['log_price']
+
+print(f"\nOLS-Estimated Price Elasticity: {elasticity_ols:.3f}")
+print(f"Difference between OLS and IV Estimates: {elasticity_ols - elasticity_iv:.3f}")
+
 ```
-Using cigarette taxes as an instrument for prices, the estimated price elasticity of demand for cigarettes between 1970 and 1990 is approximately -0.26. This suggests that a 10% increase in cigarette prices is associated with a 2.6% decrease in cigarette sales per capita, indicating that demand for cigarettes is relatively inelastic. This IV estimate of -0.26 is more elastic than the OLS estimate of -0.093. This suggests that the OLS regression likely underestimated the true price elasticity, possibly due to endogeneity bias — factors like state-level health campaigns or smoking culture may simultaneously influence both cigarette prices and consumption. By using taxes as an instrument, the IV estimate isolates the effect of exogenous price changes caused by policy, giving a clearer picture of how consumers respond to price changes.
+Based on the results, when using the total cigarette tax as an instrument for log prices, the IV-estimated price elasticity of demand is -0.923, compared to -0.809 from the OLS regression without an instrument. The IV estimate is slightly more negative, suggesting that the OLS approach may have been biased toward a smaller (less negative) elasticity, potentially due to endogeneity in the relationship between price and sales. The first-stage regression confirms that log tax is a strong instrument for log price, as indicated by the high F-statistic (1725) and the significant relationship between log tax and log price (coefficient = 0.3328, p < 0.001). This suggests that IV is addressing potential simultaneity bias, making the IV estimate more reliable in capturing the causal effect of price on cigarette demand.
 
 \newpage
 
@@ -389,28 +437,41 @@ plt.show()
 ```{python}
 #| echo: false
 
-df = df[(df['Year'] >= 1991) & (df['Year'] <= 2015)]
+df = pd.read_csv("/Users/ellenwu/homework3_attempt1-/data/output/TaxBurden_Data.csv")
+# Function to estimate price elasticity of demand for a given period
+def estimate_elasticity(df, start_year, end_year):
+    df_period = df[(df['Year'] >= start_year) & (df['Year'] <= end_year)].copy()
 
-# Drop rows with missing values in price or sales
-df = df.dropna(subset=['cost_per_pack', 'sales_per_capita'])
+    df_period["log_sales"] = np.log(df_period["sales_per_capita"])
+    df_period["log_price"] = np.log(df_period["price_cpi"])
 
-# Take logs
-df['log_sales_per_capita'] = np.log(df['sales_per_capita'])
-df['log_price_per_pack'] = np.log(df['cost_per_pack'])
+    df_period = df_period.dropna(subset=["log_sales", "log_price"])
 
-# Regression: log(sales_per_capita) ~ log(cost_per_pack)
-X = sm.add_constant(df['log_price_per_pack'])  # Add intercept
-y = df['log_sales_per_capita']
+    X = sm.add_constant(df_period["log_price"])
+    Y = df_period["log_sales"]
 
-model = sm.OLS(y, X).fit()
+    model = sm.OLS(Y, X).fit()
 
-# Output results
-print(model.summary())
+    elasticity = model.params["log_price"]
+    print(f"\n=== Price Elasticity Estimate for {start_year}-{end_year} ===")
+    print(model.summary())
+    print(f"Estimated Price Elasticity: {elasticity:.3f}")
 
-# Get elasticity (the slope coefficient)
-elasticity = model.params['log_price_per_pack']
-print(f"Estimated Price Elasticity of Demand: {elasticity:.2f}")
+    return elasticity
+
+# Estimate elasticity for 1970-1990
+elasticity_1970_1990 = estimate_elasticity(df, 1970, 1990)
+
+# Estimate elasticity for 1991-2015
+elasticity_1991_2015 = estimate_elasticity(df, 1991, 2015)
+
+# Compare the results
+print("\n=== Elasticity Comparison ===")
+print(f"Elasticity (1970-1990): {elasticity_1970_1990:.3f}")
+print(f"Elasticity (1991-2015): {elasticity_1991_2015:.3f}")
+print(f"Difference: {elasticity_1970_1990 - elasticity_1991_2015:.3f}")
+
 ```
-The estimated price elasticity of demand for cigarettes was -0.09 for the 1970-1990 period and -0.67 for the 1991-2015 period. This indicates that cigarette demand became significantly more elastic over time, meaning that consumers became much more responsive to price changes in the later period. The increase in price elasticity from -0.09 to -0.67 suggests that cigarettes became much more price-sensitive in the later years, likely due to a combination of higher taxes, public health campaigns, and the availability of alternatives. This implies that tax increases may now be a much more effective tool in reducing smoking rates than they were in earlier decades.
+Compared to my elasticity estimate for 1970-1990, the estimated price elasticity of demand for 1991-2015 was -0.997, indicating that demand became more elastic during this period. This suggests that consumers became more sensitive to price changes, although demand remained inelastic (since the absolute value is still less than 1). While price had a greater influence on purchasing decisions, factors such as addiction or brand loyalty likely continued to play a significant role.
 
 
