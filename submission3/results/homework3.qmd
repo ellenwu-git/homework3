@@ -223,224 +223,22 @@ Based on the graph, states with the highest price increases experienced a steepe
 
 ####### 6. Focusing only on the time period from 1970 to 1990, regress log sales on log prices to estimate the price elasticity of demand over that period. Interpret your results.
 
-```{python}
-#| echo: false
-
-df = pd.read_csv("/Users/ellenwu/homework3/data/output/Taxburden_data.csv")
-
-# Filter for years 1970-1990
-df = df[(df['Year'] >= 1970) & (df['Year'] <= 1990)]
-
-# Take the natural log of sales_per_capita and price_cpi
-df['log_sales'] = np.log(df['sales_per_capita'])
-df['log_price'] = np.log(df['price_cpi'])
-
-# Drop any rows with missing values
-df = df.dropna(subset=['log_sales', 'log_price'])
-
-# Define dependent (Y) and independent (X) variables
-X = sm.add_constant(df['log_price'])
-Y = df['log_sales']
-
-# Run and print OLS regression
-model = sm.OLS(Y, X).fit()
-print(model.summary())
-
-```
-The coefficient on log_price is -0.8094, meaning that a 1% increase in price is associated with a 0.81% decrease in cigarette sales. This suggests that demand for cigarettes is inelastic, but somewhat responsive to price changes. The p-value for log_price is 0.000, which is highly significant, indicating strong evidence that price affects cigarette sales.
-
-\newpage
-
 ####### 7. Again limiting to 1970 to 1990, regress log sales on log prices using the total (federal and state) cigarette tax (in dollars) as an instrument for log prices. Interpret your results and compare your estimates to those without an instrument. Are they different? If so, why?
 
-```{python}
-#| echo: false
-
-df = pd.read_csv("/Users/ellenwu/homework3/data/output/Taxburden_data.csv")
-
-# Filter for years 1970-1990
-df = df[(df['Year'] >= 1970) & (df['Year'] <= 1990)]
-
-# Take the natural log of sales, price, and tax
-df['log_sales'] = np.log(df['sales_per_capita'])
-df['log_price'] = np.log(df['price_cpi'])
-df['log_tax'] = np.log(df['tax_dollar'])
-
-# Drop any rows with  missing values
-df = df.dropna(subset=['log_sales', 'log_price', 'log_tax'])
-
-# First-Stage Regresson: Predict log(price) using log(tax) 
-X_first_stage = sm.add_constant(df['log_tax']) #IV
-Y_first_stage = df['log_price'] # Endogenous variable
-
-first_stage_model = sm.OLS(Y_first_stage, X_first_stage).fit()
-df['log_price_hat'] = first_stage_model.predict(X_first_stage)
-
-print('First-Stage Regression Results:')
-print(first_stage_model.summary())
-
-# Second-Stage Regresson: Use predicited log(price) 
-X_second_stage = sm.add_constant(df['log_price_hat']) # use predicted price
-Y_second_stage = df['log_sales'] # dependent variable
-
-second_stage_model = sm.OLS(Y_second_stage, X_second_stage).fit()
-
-print("\nSecond-Stage (IV) Regression Results:")
-print(second_stage_model.summary())
-
-# Extract estimated price elasticity
-elasticity_iv = second_stage_model.params["log_price_hat"]
-print(f"\nIV-Estimated Price Elasticity of Demand: {elasticity_iv:.3f}")
-
-# Compare IV Estimates to OLS Estimates 
-# Re-run the simple OLS regression (from Q6) for direct comparison
-X_ols = sm.add_constant(df['log_price'])
-ols_model = sm.OLS(Y_second_stage, X_ols).fit()
-elasticity_ols = ols_model.params['log_price']
-
-print(f"\nOLS-Estimated Price Elasticity: {elasticity_ols:.3f}")
-print(f"Difference between OLS and IV Estimates: {elasticity_ols - elasticity_iv:.3f}")
-
-```
-Based on the results, when using the total cigarette tax as an instrument for log prices, the IV-estimated price elasticity of demand is -0.923, compared to -0.809 from the OLS regression without an instrument. The IV estimate is slightly more negative, suggesting that the OLS approach may have been biased toward a smaller (less negative) elasticity, potentially due to endogeneity in the relationship between price and sales. The first-stage regression confirms that log tax is a strong instrument for log price, as indicated by the high F-statistic (1725) and the significant relationship between log tax and log price (coefficient = 0.3328, p < 0.001). This suggests that IV is addressing potential simultaneity bias, making the IV estimate more reliable in capturing the causal effect of price on cigarette demand.
-
-\newpage
-
 ####### 8. Show the first stage and reduced-form results from the instrument.
-```{python}
-#| echo: false
 
-# Filter data for 1970 to 1990
-df = df[(df['Year'] >= 1970) & (df['Year'] <= 1990)]
-
-df = df.dropna(subset=['cost_per_pack', 'sales_per_capita', 'tax_dollar'])
-
-# Take logs
-df['log_sales_per_capita'] = np.log(df['sales_per_capita'])
-df['log_price_per_pack'] = np.log(df['cost_per_pack'])
-
-X_first_stage = sm.add_constant(df['tax_dollar'])
-y_first_stage = df['log_price_per_pack']
-
-first_stage_model = sm.OLS(y_first_stage, X_first_stage).fit()
-print("First Stage Regression Results:")
-print(first_stage_model.summary())
-
-X_reduced_form = sm.add_constant(df['tax_dollar'])
-y_reduced_form = df['log_sales_per_capita']
-
-reduced_form_model = sm.OLS(y_reduced_form, X_reduced_form).fit()
-print("\nReduced Form Regression Results:")
-print(reduced_form_model.summary())
-```
-
-\newpage
-
-####### 9. Repeat questions 1-3 focusing on the period from 1991 to 2015.
-```{python}
-#| echo: false
-
-df = pd.read_csv("/Users/ellenwu/homework3_attempt1-/data/output/TaxBurden_Data.csv")
-df['tax_change'] = df.groupby('state')['tax_state'].diff().notna()
-prop_change = df.groupby('Year')['tax_change'].mean()
-
-# Filter for the period 1991 to 2015
-df = df[(df['Year'] >= 1991) & (df['Year'] <= 2015)]
-
-# Sort by state and year to allow comparison across years
-df = df.sort_values(by=['state', 'Year'])
-
-# Create a column that identifies whether the tax changed compared to the previous year
-df['tax_change'] = df.groupby('state')['tax_state'].diff().notnull() & (df.groupby('state')['tax_state'].diff() != 0)
-
-# Calculate the proportion of states with a tax change each year
-# Total number of states each year
-states_per_year = df.groupby('Year')['state'].nunique()
-
-# Number of states with a tax change each year
-states_with_change_per_year = df[df['tax_change']].groupby('Year')['state'].nunique()
-
-# Proportion of states with a tax change
-proportion_with_change = (states_with_change_per_year / states_per_year).fillna(0).reset_index()
-proportion_with_change.columns = ['Year', 'Proportion']
-
-# Plot the bar graph
-plt.figure(figsize=(12, 6))
-plt.bar(proportion_with_change['Year'], proportion_with_change['Proportion'], color='pink')
-
-plt.title('Proportion of States with a Change in Cigarette Tax (1991-2015)')
-plt.xlabel('Year')
-plt.ylabel('Proportion of States with Tax Change')
-plt.xticks(proportion_with_change['Year'], rotation=45)
-plt.grid(axis='y', linestyle='--', alpha=0.7)
-
-plt.show()
-
-df = df[(df['Year'] >= 1991) & (df['Year'] <= 2015)]
-
-# Use CPI to adjust to 2012 dollars
-# Assuming 2012 CPI = 230 (You should check the exact CPI value for 2012 from your dataset if available)
-df['cost_per_pack_2012'] = df['cost_per_pack'] * (230 / df['index'])
-df['tax_state_2012'] = df['tax_state'] * (230 / df['index'])
-
-# Group by year and compute average across all states
-annual_avg = df.groupby('Year').agg({
-    'cost_per_pack_2012': 'mean',
-    'tax_state_2012': 'mean'
-}).reset_index()
-
-# Plot
-plt.figure(figsize=(12, 6))
-
-plt.plot(annual_avg['Year'], annual_avg['cost_per_pack_2012'], label='Average Price per Pack (2012 Dollars)', color='pink')
-plt.plot(annual_avg['Year'], annual_avg['tax_state_2012'], label='Average Tax per Pack (2012 Dollars)', color='purple')
-
-plt.title('Average Price and Tax per Pack (1991-2015) in 2012 Dollars')
-plt.xlabel('Year')
-plt.ylabel('Dollars (2012)')
-plt.legend()
-plt.grid(True, linestyle='--', alpha=0.7)
-
-plt.show()
-
-df = df[(df['Year'] >= 1991) & (df['Year'] <= 2015)]
-
-# Identify price change over time per state
-price_change = df.groupby('state')['cost_per_pack'].agg(['first', 'last']).reset_index()
-price_change['price_increase'] = price_change['last'] - price_change['first']
-
-# Get top 5 states with highest price increases
-top5_states = price_change.sort_values('price_increase', ascending=False).head(5)['state']
-
-# Filter dataset to only those states
-top5_df = df[df['state'].isin(top5_states)]
-
-# Group by year and state to calculate average packs sold per capita
-packs_per_capita = top5_df.groupby(['Year', 'state'])['sales_per_capita'].mean().reset_index()
-
-for state in top5_states:
-    state_data = packs_per_capita[packs_per_capita['state'] == state]
-    plt.plot(state_data['Year'], state_data['sales_per_capita'], label=state)
-
-plt.title('Average Packs Sold Per Capita (Top 5 States with Highest Price Increases)')
-plt.xlabel('Year')
-plt.ylabel('Packs Sold Per Capita')
-plt.legend()
-plt.grid(True, linestyle='--', alpha=0.7)
-
-plt.show()
-```
-
-\newpage
+####### 9. Repeat questions 6-8 focusing on the period from 1991 to 2015.
 
 ####### 10. Compare your elasticity estimates from 1970-1990 versus those from 1991-2015. Are they different? If so, why?
+
 ```{python}
 #| echo: false
+# Load the dataset
+df = pd.read_csv("/Users/ellenwu/homework3/data/output/Taxburden_data.csv")
 
-df = pd.read_csv("/Users/ellenwu/homework3_attempt1-/data/output/TaxBurden_Data.csv")
-# Function to estimate price elasticity of demand for a given period
-def estimate_elasticity(df, start_year, end_year):
-    df_period = df[(df['Year'] >= start_year) & (df['Year'] <= end_year)].copy()
+def run_ols(df, start_year, end_year):
+    """Runs an OLS regression of log sales on log price for the given time period."""
+    df_period = df[(df["Year"] >= start_year) & (df["Year"] <= end_year)].copy()
 
     df_period["log_sales"] = np.log(df_period["sales_per_capita"])
     df_period["log_price"] = np.log(df_period["price_cpi"])
@@ -451,27 +249,147 @@ def estimate_elasticity(df, start_year, end_year):
     Y = df_period["log_sales"]
 
     model = sm.OLS(Y, X).fit()
+    
+    return model
 
-    elasticity = model.params["log_price"]
-    print(f"\n=== Price Elasticity Estimate for {start_year}-{end_year} ===")
-    print(model.summary())
-    print(f"Estimated Price Elasticity: {elasticity:.3f}")
+def run_iv(df, start_year, end_year):
+    """Runs an IV regression using cigarette tax as an instrument for price."""
+    df_period = df[(df["Year"] >= start_year) & (df["Year"] <= end_year)].copy()
 
-    return elasticity
+    df_period["log_sales"] = np.log(df_period["sales_per_capita"])
+    df_period["log_price"] = np.log(df_period["price_cpi"])
+    df_period["log_tax"] = np.log(df_period["tax_dollar"])
 
-# Estimate elasticity for 1970-1990
-elasticity_1970_1990 = estimate_elasticity(df, 1970, 1990)
+    df_period = df_period.dropna(subset=["log_sales", "log_price", "log_tax"])
 
-# Estimate elasticity for 1991-2015
-elasticity_1991_2015 = estimate_elasticity(df, 1991, 2015)
+    # First-Stage Regression: Log(Price) ~ Log(Tax)
+    X_first_stage = sm.add_constant(df_period["log_tax"])
+    Y_first_stage = df_period["log_price"]
 
-# Compare the results
-print("\n=== Elasticity Comparison ===")
-print(f"Elasticity (1970-1990): {elasticity_1970_1990:.3f}")
-print(f"Elasticity (1991-2015): {elasticity_1991_2015:.3f}")
-print(f"Difference: {elasticity_1970_1990 - elasticity_1991_2015:.3f}")
+    first_stage_model = sm.OLS(Y_first_stage, X_first_stage).fit()
+    df_period["log_price_hat"] = first_stage_model.predict(X_first_stage)
+
+    # Second-Stage Regression: Log(Sales) ~ Log(Price_Hat)
+    X_second_stage = sm.add_constant(df_period["log_price_hat"])
+    Y_second_stage = df_period["log_sales"]
+
+    second_stage_model = sm.OLS(Y_second_stage, X_second_stage).fit()
+    
+    return first_stage_model, second_stage_model
+
+def run_reduced_form(df, start_year, end_year):
+    """Runs the reduced-form regression Log(Sales) ~ Log(Tax)."""
+    df_period = df[(df["Year"] >= start_year) & (df["Year"] <= end_year)].copy()
+
+    df_period["log_sales"] = np.log(df_period["sales_per_capita"])
+    df_period["log_tax"] = np.log(df_period["tax_dollar"])
+
+    df_period = df_period.dropna(subset=["log_sales", "log_tax"])
+
+    X_reduced_form = sm.add_constant(df_period["log_tax"])
+    Y_reduced_form = df_period["log_sales"]
+
+    reduced_form_model = sm.OLS(Y_reduced_form, X_reduced_form).fit()
+    
+    return reduced_form_model
+
+# Run OLS and IV for 1970-1990
+ols_1970_1990 = run_ols(df, 1970, 1990)
+first_stage_1970_1990, iv_1970_1990 = run_iv(df, 1970, 1990)
+reduced_form_1970_1990 = run_reduced_form(df, 1970, 1990)
+
+# Run OLS and IV for 1991-2015
+ols_1991_2015 = run_ols(df, 1991, 2015)
+first_stage_1991_2015, iv_1991_2015 = run_iv(df, 1991, 2015)
+reduced_form_1991_2015 = run_reduced_form(df, 1991, 2015)
+
+# Prepare results in DataFrame format
+results = pd.DataFrame({
+    "Period": ["1970-1990", "1970-1990", "1991-2015", "1991-2015"],
+    "Method": ["OLS", "IV", "OLS", "IV"],
+    "Log Price Coefficient": [
+        ols_1970_1990.params["log_price"],
+        iv_1970_1990.params["log_price_hat"],
+        ols_1991_2015.params["log_price"],
+        iv_1991_2015.params["log_price_hat"],
+    ],
+    "Std Error": [
+        ols_1970_1990.bse["log_price"],
+        iv_1970_1990.bse["log_price_hat"],
+        ols_1991_2015.bse["log_price"],
+        iv_1991_2015.bse["log_price_hat"],
+    ],
+    "N": [
+        len(ols_1970_1990.resid),
+        len(iv_1970_1990.resid),
+        len(ols_1991_2015.resid),
+        len(iv_1991_2015.resid),
+    ],
+    "R2": [
+        ols_1970_1990.rsquared,
+        iv_1970_1990.rsquared,
+        ols_1991_2015.rsquared,
+        iv_1991_2015.rsquared,
+    ],
+})
+
+reduced_form_results = pd.DataFrame({
+    "Period": ["1970-1990", "1991-2015"],
+    "Log Tax Coefficient": [
+        reduced_form_1970_1990.params["log_tax"],
+        reduced_form_1991_2015.params["log_tax"],
+    ],
+    "Std Error": [
+        reduced_form_1970_1990.bse["log_tax"],
+        reduced_form_1991_2015.bse["log_tax"],
+    ],
+    "N": [
+        len(reduced_form_1970_1990.resid),
+        len(reduced_form_1991_2015.resid),
+    ],
+    "R2": [
+        reduced_form_1970_1990.rsquared,
+        reduced_form_1991_2015.rsquared,
+    ],
+})
+
+first_stage_results = pd.DataFrame({
+    "Period": ["1970-1990", "1991-2015"],
+    "Log Tax Coefficient": [
+        first_stage_1970_1990.params["log_tax"],
+        first_stage_1991_2015.params["log_tax"],
+    ],
+    "Std Error": [
+        first_stage_1970_1990.bse["log_tax"],
+        first_stage_1991_2015.bse["log_tax"],
+    ],
+    "N": [
+        len(first_stage_1970_1990.resid),
+        len(first_stage_1991_2015.resid),
+    ],
+    "R2": [
+        first_stage_1970_1990.rsquared,
+        first_stage_1991_2015.rsquared,
+    ],
+})
+
+# Display results
+print("\n=== Elasticity Estimates ===")
+print(results)
+
+print("\n=== Reduced Form Results ===")
+print(reduced_form_results)
+
+print("\n=== First Stage Results ===")
+print(first_stage_results)
 
 ```
-Compared to my elasticity estimate for 1970-1990, the estimated price elasticity of demand for 1991-2015 was -0.997, indicating that demand became more elastic during this period. This suggests that consumers became more sensitive to price changes, although demand remained inelastic (since the absolute value is still less than 1). While price had a greater influence on purchasing decisions, factors such as addiction or brand loyalty likely continued to play a significant role.
+The OLS estimate of price elasticity for 1970-1990 is -0.809, indicating that a 1% increase in price is associated with a 0.81% decrease in cigarette sales. This suggests that demand for cigarettes during this period was inelastic but responsive to price changes. When using the total cigarette tax as an instrument for price (IV estimation), the price elasticity becomes -0.923, slightly more negative than the OLS estimate. This suggests that the OLS estimate may have been biased due to endogeneity—likely caused by simultaneity or measurement errors in price. The first-stage regression shows that log tax is a strong predictor of log price, with a coefficient of 0.333 and an R² of 0.617. This confirms that cigarette taxes explain a significant portion of price variation. The reduced-form regression reveals a negative relationship between log tax and log sales, with a coefficient of -0.307 and an R² of 0.236, suggesting that higher cigarette taxes indirectly reduce cigarette consumption. The OLS estimate for 1991-2015 is -0.997, showing that demand became more elastic compared to the earlier period. This suggests that consumers were more responsive to price changes in this later period. The IV estimate is -1.113, which is even more elastic than the OLS estimate. The larger magnitude suggests that failing to account for endogeneity in OLS leads to an underestimation of the true price elasticity. The first-stage regression again shows that log tax is a strong instrument for log price, with a coefficient of 0.432 and an R² of 0.868 (higher than in the earlier period). This suggests that taxes played an even stronger role in determining cigarette prices in the later period. The reduced-form regression shows a stronger negative relationship between log tax and log sales (-0.480), with an R² of 0.608, indicating that tax increases had a larger effect on reducing cigarette consumption in this period. Demand for cigarettes became more elastic over time. The OLS elasticity estimate shifted from -0.809 (1970-1990) to -0.997 (1991-2015), and the IV estimate became even larger in magnitude (-0.923 to -1.113). This suggests that price sensitivity increased in the later period. One possible reason for this increase in elasticity is that smoking became less socially acceptable, with stronger public health campaigns, smoking bans, and alternative nicotine products (like vaping) emerging. Consumers in 1991-2015 may have had more substitutes available, making them more responsive to price changes. The IV estimates are more negative than OLS in both periods, reinforcing the idea that OLS underestimates the true price elasticity due to endogeneity. Overall, these results suggest that cigarette demand became more price-sensitive over time. The instrumental variable approach corrects for endogeneity, revealing a stronger negative relationship between price and cigarette consumption than the OLS estimates suggest. The first-stage and reduced-form results confirm that cigarette taxes significantly affect both price and consumption.
+
+
+
+
+
+
 
 
